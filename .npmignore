@@ -1,0 +1,14 @@
+# Ignore source files
+/src
+
+# Ignore configuration files
+/.babelrc
+/tsconfig.json
+/rollup.config.js
+/node_modules
+/dist/*.*.map
+
+# Ignore test files
+/tests
+/*.test.js
+/*.spec.js
