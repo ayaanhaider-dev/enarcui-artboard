@@ -38,17 +38,7 @@
  */
 
 import {
-  Box,
-  Button,
-  Grid,
-  Slider,
-  Stack,
-  ToggleButton,
-  ToggleButtonGroup,
-  Tooltip,
-  Typography,
-} from "@mui/material";
-import {
+  ArrowLeft,
   ArrowRight,
   Brush,
   Circle,
@@ -67,7 +57,7 @@ import React, {
   useState,
 } from "react";
 import { HexColorPicker } from "react-colorful";
-
+import styles from "../styles/ArtBoard.module.css";
 /**
  * Represents a drawable object on the canvas.
  */
@@ -820,10 +810,10 @@ const ArtBoard = forwardRef<ArtBoardRef, ArtBoardProps>(
     };
 
     return (
-      <Box sx={{ mt: 3 }}>
-        <Grid container spacing={2}>
+      <div className={styles.container}>
+        <div className={styles.wrapper}>
           {/* Canvas Section */}
-          <Grid item xs={12} md={8}>
+          <div className={styles.canvasWrapper}>
             <canvas
               ref={canvasRef}
               width={800}
@@ -833,220 +823,154 @@ const ArtBoard = forwardRef<ArtBoardRef, ArtBoardProps>(
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
               style={{
-                border: "1px solid #ccc",
+                border: "2px solid #e9ecef",
                 borderRadius: "4px",
-                cursor: tool === "select" ? "default" : "crosshair",
                 backgroundColor: "#ffffff",
+                cursor: tool === "select" ? "default" : "crosshair",
+                width: "100%",
+                height: "auto",
               }}
             />
-          </Grid>
+          </div>
 
           {/* Controls Section */}
-          <Grid item xs={12} md={4}>
-            <Stack spacing={2}>
+          <div className={styles.controls}>
+            <div className={styles.controlGroup}>
               {/* Color Picker and Tool Selection */}
-              <Box display="flex" alignItems="flex-start" gap={2}>
-                {/* Color Picker */}
-                <Box flex={1}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    Color:
-                  </Typography>
+              <div className={styles.colorAndTools}>
+                <div className={styles.colorPicker}>
+                  <label className={styles.label}>Color:</label>
                   <HexColorPicker color={brushColor} onChange={setBrushColor} />
-                </Box>
-              </Box>
-              <Box display="flex" alignItems="flex-start" gap={2}>
-                {/* Tool Selection */}
-                <ToggleButtonGroup
-                  value={tool}
-                  exclusive
-                  onChange={(e, value) => value && setTool(value)}
-                  aria-label="tool selection"
-                  size="large"
-                  sx={{
-                    display: "flex",
-                    flexDirection: "row", // Changed to row for horizontal alignment
-                    gap: 0.5,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <ToggleButton
-                    value="brush"
-                    aria-label="brush tool"
-                    size="small"
-                    sx={{
-                      width: 55,
-                      height: 55,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      ...(tool === "brush" && {
-                        backgroundColor: "#f0f0f0",
-                      }),
-                    }}
-                  >
-                    <Brush size={16} />
-                  </ToggleButton>
-                  <ToggleButton
-                    value="circle"
-                    aria-label="circle tool"
-                    size="small"
-                    sx={{
-                      width: 55,
-                      height: 55,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      ...(tool === "circle" && {
-                        backgroundColor: "#f0f0f0",
-                      }),
-                    }}
-                  >
-                    <Circle size={16} />
-                  </ToggleButton>
-                  <ToggleButton
-                    value="rect"
-                    aria-label="rectangle tool"
-                    size="small"
-                    sx={{
-                      width: 55,
-                      height: 55,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      ...(tool === "rect" && {
-                        backgroundColor: "#f0f0f0",
-                      }),
-                    }}
-                  >
-                    <Square size={16} />
-                  </ToggleButton>
-                  <ToggleButton
-                    value="select"
-                    aria-label="select tool"
-                    size="medium" // Increased size for prominence
-                    sx={{
-                      width: 55,
-                      height: 55,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      ...(tool === "select" && {
-                        backgroundColor: "#f0f0f0",
-                      }),
-                    }}
-                  >
-                    <Move size={20} />
-                  </ToggleButton>
-                  <ToggleButton
-                    value="eraser"
-                    aria-label="eraser tool"
-                    size="small"
-                    sx={{
-                      width: 55,
-                      height: 55,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      ...(tool === "eraser" && {
-                        backgroundColor: "#f0f0f0",
-                      }),
-                    }}
-                  >
-                    <Eraser size={16} />
-                  </ToggleButton>
-                </ToggleButtonGroup>
-                <Tooltip title="Delete Selected Shape">
-                  <span>
-                    <Button
-                      variant="contained"
-                      color="error"
-                      onClick={handleDelete}
-                      disabled={selectedObject === null}
-                      startIcon={<Trash2 size={16} />}
-                      sx={{ height: 55 }}
-                    >
-                      Delete
-                    </Button>
-                  </span>
-                </Tooltip>
-              </Box>
-              {/* Size Slider */}
-              <Box>
-                <Typography variant="subtitle2" gutterBottom>
-                  Size:
-                </Typography>
-                <Slider
-                  value={brushRadius}
-                  min={1}
-                  max={50}
-                  onChange={(e, value) => setBrushRadius(value as number)}
-                  aria-labelledby="brush-size-slider"
-                />
-              </Box>
+                </div>
 
-              {/* Action Buttons: Delete, Clear, Undo, Redo */}
-              <Stack direction="row" spacing={1}>
-                <Tooltip title="Clear Canvas">
-                  <span>
-                    <Button
-                      variant="contained"
-                      color="warning"
-                      onClick={handleClearCanvas}
-                      disabled={objects.length === 0}
-                      startIcon={<Trash size={16} />}
+                <div className={styles.toolsGroup}>
+                  <div className={styles.tools}>
+                    <button
+                      className={`${styles.toolButton} ${
+                        tool === "brush" ? styles.active : ""
+                      }`}
+                      onClick={() => setTool("brush")}
+                      title="Brush Tool"
                     >
-                      Clear
-                    </Button>
-                  </span>
-                </Tooltip>
-                <Tooltip title="Undo">
-                  <span>
-                    <Button
-                      variant="contained"
-                      onClick={undo}
-                      disabled={historyIndex <= 0}
-                      startIcon={
-                        <ArrowRight
-                          size={16}
-                          style={{ transform: "rotate(180deg)" }}
-                        />
-                      }
+                      <Brush size={20} />
+                    </button>
+                    <button
+                      className={`${styles.toolButton} ${
+                        tool === "circle" ? styles.active : ""
+                      }`}
+                      onClick={() => setTool("circle")}
+                      title="Circle Tool"
                     >
-                      Undo
-                    </Button>
-                  </span>
-                </Tooltip>
-                <Tooltip title="Redo">
-                  <span>
-                    <Button
-                      variant="contained"
-                      onClick={redo}
-                      disabled={historyIndex >= history.length - 1}
-                      startIcon={<ArrowRight size={16} />}
+                      <Circle size={20} />
+                    </button>
+                    <button
+                      className={`${styles.toolButton} ${
+                        tool === "rect" ? styles.active : ""
+                      }`}
+                      onClick={() => setTool("rect")}
+                      title="Rectangle Tool"
                     >
-                      Redo
-                    </Button>
-                  </span>
-                </Tooltip>
-              </Stack>
+                      <Square size={20} />
+                    </button>
+                    <button
+                      className={`${styles.toolButton} ${
+                        tool === "select" ? styles.active : ""
+                      }`}
+                      onClick={() => setTool("select")}
+                      title="Select Tool"
+                    >
+                      <Move size={20} />
+                    </button>
+                    <button
+                      className={`${styles.toolButton} ${
+                        tool === "eraser" ? styles.active : ""
+                      }`}
+                      onClick={() => setTool("eraser")}
+                      title="Eraser Tool"
+                    >
+                      <Eraser size={20} />
+                    </button>
+                  </div>
+
+                  <button
+                    className={`${styles.deleteButton} ${
+                      selectedObject === null ? styles.disabled : ""
+                    }`}
+                    onClick={handleDelete}
+                    disabled={selectedObject === null}
+                    title="Delete Selected Shape"
+                  >
+                    <Trash2 size={20} />
+                    Delete
+                  </button>
+                </div>
+              </div>
+
+              {/* Size Slider */}
+              <div className={styles.sliderGroup}>
+                <label className={styles.label}>Size:</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="50"
+                  value={brushRadius}
+                  onChange={(e) => setBrushRadius(Number(e.target.value))}
+                  className={styles.slider}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className={styles.actionButtons}>
+                <button
+                  className={`${styles.actionButton} ${styles.warning} ${
+                    objects.length === 0 ? styles.disabled : ""
+                  }`}
+                  onClick={handleClearCanvas}
+                  disabled={objects.length === 0}
+                  title="Clear Canvas"
+                >
+                  <Trash size={20} />
+                  Clear
+                </button>
+
+                <button
+                  className={`${styles.actionButton} ${
+                    historyIndex <= 0 ? styles.disabled : ""
+                  }`}
+                  onClick={undo}
+                  disabled={historyIndex <= 0}
+                  title="Undo"
+                >
+                  <ArrowLeft size={20} />
+                  Undo
+                </button>
+
+                <button
+                  className={`${styles.actionButton} ${
+                    historyIndex >= history.length - 1 ? styles.disabled : ""
+                  }`}
+                  onClick={redo}
+                  disabled={historyIndex >= history.length - 1}
+                  title="Redo"
+                >
+                  <ArrowRight size={20} />
+                  Redo
+                </button>
+              </div>
 
               {/* Export Button */}
-              <Tooltip title="Export Image">
-                <span>
-                  <Button
-                    variant="outlined"
-                    onClick={handleExportImage}
-                    startIcon={<Download size={16} />}
-                    fullWidth
-                  >
-                    Export
-                  </Button>
-                </span>
-              </Tooltip>
-            </Stack>
-          </Grid>
-        </Grid>
-      </Box>
+              <button
+                className={styles.exportButton}
+                onClick={handleExportImage}
+                title="Export Image"
+              >
+                <Download size={20} />
+                Export
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 );

@@ -179,6 +179,5 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 Special thanks to:
 
 - React team for the incredible framework
-- Material-UI team for the component library
 - All our contributors and community members
 - The open source community for inspiration and support
