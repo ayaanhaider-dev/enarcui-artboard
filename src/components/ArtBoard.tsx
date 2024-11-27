@@ -201,6 +201,17 @@ const ArtBoard = forwardRef<ArtBoardRef, ArtBoardProps>(
         drawObjects(); // Redraw canvas without the image
       }
     }, [imageSrc]);
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const parent = canvas.parentElement;
+        if (parent) {
+          canvas.width = parent.offsetWidth; // Match the parent's width
+          canvas.height = 800;
+        }
+        drawObjects(); // Redraw on size change
+      }
+    }, [objects]);
 
     // Calculate the bounding box of an object, considering stroke width
     const calculateBounds = (
@@ -752,16 +763,71 @@ const ArtBoard = forwardRef<ArtBoardRef, ArtBoardProps>(
     };
 
     // Get mouse position relative to the canvas
-    const getCanvasPos = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    const getCanvasPos = (
+      event:
+        | React.MouseEvent<HTMLCanvasElement>
+        | React.TouchEvent<HTMLCanvasElement>
+    ): { x: number; y: number } => {
       const canvas = canvasRef.current;
       if (!canvas) return { x: 0, y: 0 };
+
       const rect = canvas.getBoundingClientRect();
+      let clientX: number;
+      let clientY: number;
+
+      if ("touches" in event) {
+        clientX = event.touches[0].clientX;
+        clientY = event.touches[0].clientY;
+      } else {
+        clientX = event.clientX;
+        clientY = event.clientY;
+      }
+
       return {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top,
+        x: clientX - rect.left,
+        y: clientY - rect.top,
       };
     };
 
+    // Touch Handlers
+    const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      if (!touch) return;
+
+      const simulatedEvent = {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        altKey: e.altKey,
+        ctrlKey: e.ctrlKey,
+        metaKey: e.metaKey,
+        shiftKey: e.shiftKey,
+      } as unknown as React.MouseEvent<HTMLCanvasElement>;
+
+      handleMouseDown(simulatedEvent);
+    };
+
+    const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      if (!touch) return;
+
+      const simulatedEvent = {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        altKey: e.altKey,
+        ctrlKey: e.ctrlKey,
+        metaKey: e.metaKey,
+        shiftKey: e.shiftKey,
+      } as unknown as React.MouseEvent<HTMLCanvasElement>;
+
+      handleMouseMove(simulatedEvent);
+    };
+
+    const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+      e.preventDefault();
+      handleMouseUp(); // Call without arguments
+    };
     // Redraw objects whenever they change
     useEffect(() => {
       drawObjects();
@@ -822,6 +888,9 @@ const ArtBoard = forwardRef<ArtBoardRef, ArtBoardProps>(
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
               style={{
                 border: "2px solid #e9ecef",
                 borderRadius: "4px",
