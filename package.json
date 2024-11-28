@@ -1,6 +1,6 @@
 {
   "name": "@enarcui/artboard",
-  "version": "0.3.5-alpha.3",
+  "version": "0.3.6-alpha.4",
   "description": "A versatile drawing tool component for React",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

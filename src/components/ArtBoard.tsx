@@ -37,33 +37,27 @@
  * export default App;
  */
 
-import {
-  ArrowLeft,
-  ArrowRight,
-  Brush,
-  Circle,
-  Download,
-  Eraser,
-  Move,
-  Square,
-  Trash,
-  Trash2,
-} from "lucide-react";
 import React, {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useRef,
   useState,
 } from "react";
 import { HexColorPicker } from "react-colorful";
+import { useCanvasEvents } from "../hooks/useCanvasEvents";
+import { useCanvasHandlers } from "../hooks/useCanvasHandlers";
 import styles from "../styles/ArtBoard.module.css";
+import ActionButtons from "./Tools/ActionButtons";
+import { Shapes } from "./Tools/Shapes";
+import Slider from "./Tools/Slider";
+
 /**
  * Represents a drawable object on the canvas.
  */
-
-interface DrawingObject {
-  type: "line" | "circle" | "arrow" | "rect"; // The type of object (e.g., line, circle).
+export interface DrawingObject {
+  type: "brush" | "circle" | "arrow" | "rect" | "eraser";
   points: { x: number; y: number }[]; // The points defining the object.
   stroke: string; // The color of the stroke.
   strokeWidth: number; // The width of the stroke.
@@ -74,7 +68,10 @@ interface DrawingObject {
     height: number; // Height of the bounding box.
   };
   selected: boolean; // Whether the object is selected.
+  erased?: boolean; // Flag to mark if part of object is erased
+  erasedPaths?: { x: number; y: number }[][];
 }
+
 /**
  * Props for the ArtBoard component.
  */
@@ -153,529 +150,211 @@ export interface ArtBoardRef {
  *
  * export default App;
  */
-
 const ArtBoard = forwardRef<ArtBoardRef, ArtBoardProps>(
   ({ saveData, imageSrc }, ref) => {
+    // Canvas reference
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const animationRef = useRef<number | null>(null);
 
-    // State for managing drawable objects
+    // State for drawable objects and user actions
     const [objects, setObjects] = useState<DrawingObject[]>([]);
     const [isDrawing, setIsDrawing] = useState(false);
 
-    // Tool settings
+    // Tool state management
     const [tool, setTool] = useState<
       "brush" | "circle" | "arrow" | "rect" | "select" | "eraser"
     >("brush");
     const [brushColor, setBrushColor] = useState("#000000");
     const [brushRadius, setBrushRadius] = useState(5);
 
-    // State for selected object
+    // Selection and history management
     const [selectedObject, setSelectedObject] = useState<number | null>(null);
     const [startPos, setStartPos] = useState<{ x: number; y: number } | null>(
       null
     );
     const [resizeHandle, setResizeHandle] = useState<number | null>(null);
 
-    // State for history (undo/redo functionality)
     const [history, setHistory] = useState<DrawingObject[][]>([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
 
-    // State for background image
+    // State for the background image
     const [backgroundImage, setBackgroundImage] =
       useState<HTMLImageElement | null>(null);
 
+    // Handlers for canvas interactions
+    const { undo, redo, handleDelete, handleClearCanvas, handleExportImage } =
+      useCanvasHandlers({
+        canvasRef,
+        objects,
+        setObjects,
+        setSelectedObject,
+        selectedObject,
+        setHistory,
+        setHistoryIndex,
+        history,
+        historyIndex,
+      });
+
+    const {
+      handleMouseDown,
+      handleMouseMove,
+      handleMouseUp,
+      handleTouchStart,
+      handleTouchMove,
+      handleTouchEnd,
+    } = useCanvasEvents({
+      canvasRef,
+      objects,
+      setObjects,
+      setStartPos,
+      setResizeHandle,
+      setIsDrawing,
+      setSelectedObject,
+      startPos,
+      resizeHandle,
+      tool,
+      brushColor,
+      brushRadius,
+      selectedObject,
+      isDrawing,
+      addToHistory: (newObjects: DrawingObject[]) => {
+        const newHistory = history.slice(0, historyIndex + 1);
+        setHistory([...newHistory, JSON.parse(JSON.stringify(newObjects))]);
+        setHistoryIndex(historyIndex + 1);
+      },
+    });
+
+    // Handle background image loading
     useEffect(() => {
       if (imageSrc) {
         const img = new Image();
         img.src = imageSrc;
-        img.onload = () => {
-          setBackgroundImage(img);
-          drawObjects(); // Redraw canvas with the new image
-        };
-        img.onerror = () => {
-          console.error("Failed to load image:", imageSrc);
-          setBackgroundImage(null);
-        };
+        img.onload = () => setBackgroundImage(img);
+        img.onerror = () => console.error("Failed to load image:", imageSrc);
       } else {
         setBackgroundImage(null);
-        drawObjects(); // Redraw canvas without the image
       }
     }, [imageSrc]);
-    useEffect(() => {
+
+    // Draw objects and manage animation loop
+    const drawObjects = useCallback(() => {
       const canvas = canvasRef.current;
-      if (canvas) {
-        const parent = canvas.parentElement;
-        if (parent) {
-          canvas.width = parent.offsetWidth; // Match the parent's width
-          canvas.height = 800;
-        }
-        drawObjects(); // Redraw on size change
-      }
-    }, [objects]);
+      const ctx = canvas?.getContext("2d");
+      if (!canvas || !ctx) return;
 
-    // Calculate the bounding box of an object, considering stroke width
-    const calculateBounds = (
-      points: { x: number; y: number }[],
-      strokeWidth: number
-    ): { x: number; y: number; width: number; height: number } => {
-      if (!points.length) return { x: 0, y: 0, width: 0, height: 0 };
-
-      const xs = points.map((p) => p.x);
-      const ys = points.map((p) => p.y);
-      const minX = Math.min(...xs) - strokeWidth / 2;
-      const maxX = Math.max(...xs) + strokeWidth / 2;
-      const minY = Math.min(...ys) - strokeWidth / 2;
-      const maxY = Math.max(...ys) + strokeWidth / 2;
-
-      return {
-        x: minX,
-        y: minY,
-        width: maxX - minX,
-        height: maxY - minY,
-      };
-    };
-
-    /**
-     * Adds the current state of objects to history for undo/redo functionality.
-     * @param {DrawingObject[]} newObjects - The updated objects array.
-     */
-    const addToHistory = (newObjects: DrawingObject[]) => {
-      const newHistory = history.slice(0, historyIndex + 1);
-      setHistory([...newHistory, JSON.parse(JSON.stringify(newObjects))]);
-      setHistoryIndex(historyIndex + 1);
-    };
-
-    /**
-     * Handles the undo action to revert to the previous state.
-     */
-    const undo = () => {
-      if (historyIndex > 0) {
-        setHistoryIndex(historyIndex - 1);
-        setObjects(history[historyIndex - 1]);
-      }
-    };
-
-    /**
-     * Handles the redo action to move forward to the next state.
-     */
-    const redo = () => {
-      if (historyIndex < history.length - 1) {
-        setHistoryIndex(historyIndex + 1);
-        setObjects(history[historyIndex + 1]);
-      }
-    };
-
-    // Check if a point is on a line using isPointInStroke
-    const isPointOnLine = (
-      point: { x: number; y: number },
-      linePoints: { x: number; y: number }[],
-      lineWidth: number
-    ): boolean => {
-      const ctx = canvasRef.current?.getContext("2d");
-      if (!ctx) return false;
-
-      ctx.lineWidth = lineWidth;
-      ctx.beginPath();
-      ctx.moveTo(linePoints[0].x, linePoints[0].y);
-      for (let i = 1; i < linePoints.length; i++) {
-        ctx.lineTo(linePoints[i].x, linePoints[i].y);
-      }
-      return ctx.isPointInStroke(point.x, point.y);
-    };
-
-    // Handle mouse down event
-    const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-      const pos = getCanvasPos(e);
-      setIsDrawing(true);
-      setStartPos(pos);
-
-      if (tool === "select") {
-        // Check for resize handles first
-        const selectedObj =
-          selectedObject !== null ? objects[selectedObject] : null;
-        if (selectedObj) {
-          const handleIndex = getHandleAtPosition(pos, selectedObj);
-          if (handleIndex !== null) {
-            setResizeHandle(handleIndex);
-            return;
-          }
-        }
-
-        // If no handle clicked, check for object selection
-        const clickedObject = objects
-          .map((obj, index) => ({ obj, index }))
-          .reverse()
-          .find(({ obj }) => {
-            const { x, y, width, height } = obj.bounds;
-            // First check bounding box
-            if (
-              pos.x >= x &&
-              pos.x <= x + width &&
-              pos.y >= y &&
-              pos.y <= y + height
-            ) {
-              // For lines, use isPointOnLine for better accuracy
-              if (obj.type === "line") {
-                return isPointOnLine(pos, obj.points, obj.strokeWidth + 5); // Add some tolerance
-              } else {
-                return true;
-              }
-            }
-            return false;
-          });
-
-        if (clickedObject) {
-          const newObjects = objects.map((obj, i) => ({
-            ...obj,
-            selected: i === clickedObject.index,
-          }));
-          setObjects(newObjects);
-          setSelectedObject(clickedObject.index);
-        } else {
-          // Deselect all if nothing is clicked
-          const newObjects = objects.map((obj) => ({
-            ...obj,
-            selected: false,
-          }));
-          setObjects(newObjects);
-          setSelectedObject(null);
-        }
-        return;
-      }
-
-      if (tool === "eraser") {
-        const newObjects = objects.filter((obj) => {
-          const { x, y, width, height } = obj.bounds;
-          if (
-            pos.x >= x &&
-            pos.x <= x + width &&
-            pos.y >= y &&
-            pos.y <= y + height
-          ) {
-            if (obj.type === "line") {
-              return !isPointOnLine(pos, obj.points, obj.strokeWidth + 5);
-            } else {
-              return false;
-            }
-          }
-          return true;
-        });
-        if (newObjects.length !== objects.length) {
-          setObjects(newObjects);
-          addToHistory(newObjects);
-        }
-        return;
-      }
-
-      // Start a new object
-      const newObject: DrawingObject = {
-        type: tool === "brush" ? "line" : tool,
-        points: [pos],
-        stroke: brushColor,
-        strokeWidth: brushRadius,
-        bounds: { x: pos.x, y: pos.y, width: 0, height: 0 },
-        selected: false,
-      };
-
-      setObjects([...objects, newObject]);
-    };
-
-    // Handle mouse move event
-    const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-      if (!isDrawing) return;
-      const pos = getCanvasPos(e);
-
-      if (tool === "select" && selectedObject !== null && selectedObject >= 0) {
-        const newObjects = [...objects];
-        const obj = newObjects[selectedObject];
-        if (!startPos) return;
-
-        if (resizeHandle !== null) {
-          // Handle resizing
-          const { x: bx, y: by, width: bw, height: bh } = obj.bounds;
-          const dx = pos.x - startPos.x;
-          const dy = pos.y - startPos.y;
-          let newBounds = { ...obj.bounds };
-
-          // Update bounds based on handle
-          switch (resizeHandle) {
-            case 0: // Top-left
-              newBounds.x += dx;
-              newBounds.y += dy;
-              newBounds.width -= dx;
-              newBounds.height -= dy;
-              break;
-            case 1: // Top-middle
-              newBounds.y += dy;
-              newBounds.height -= dy;
-              break;
-            case 2: // Top-right
-              newBounds.width += dx;
-              newBounds.y += dy;
-              newBounds.height -= dy;
-              break;
-            case 3: // Middle-left
-              newBounds.x += dx;
-              newBounds.width -= dx;
-              break;
-            case 4: // Middle-right
-              newBounds.width += dx;
-              break;
-            case 5: // Bottom-left
-              newBounds.x += dx;
-              newBounds.width -= dx;
-              newBounds.height += dy;
-              break;
-            case 6: // Bottom-middle
-              newBounds.height += dy;
-              break;
-            case 7: // Bottom-right
-              newBounds.width += dx;
-              newBounds.height += dy;
-              break;
-            default:
-              break;
-          }
-
-          // Adjust for negative widths/heights
-          if (newBounds.width < 0) {
-            newBounds.x += newBounds.width;
-            newBounds.width = Math.abs(newBounds.width);
-          }
-
-          if (newBounds.height < 0) {
-            newBounds.y += newBounds.height;
-            newBounds.height = Math.abs(newBounds.height);
-          }
-
-          // Update object bounds and transform points accordingly
-          if (obj.type === "line") {
-            // For lines, scale all points proportionally
-            const scaleX = bw !== 0 ? newBounds.width / bw : 1;
-            const scaleY = bh !== 0 ? newBounds.height / bh : 1;
-
-            obj.points = obj.points.map((point) => ({
-              x: newBounds.x + (point.x - bx) * scaleX,
-              y: newBounds.y + (point.y - by) * scaleY,
-            }));
-          } else if (obj.type === "circle") {
-            // For circles, adjust the circumference point based on new bounds
-            const centerX = newBounds.x + newBounds.width / 2;
-            const centerY = newBounds.y + newBounds.height / 2;
-            const radius = Math.max(newBounds.width, newBounds.height) / 2;
-            obj.points[0] = { x: centerX, y: centerY };
-            obj.points[1] = { x: centerX + radius, y: centerY };
-          } else if (obj.type === "rect" || obj.type === "arrow") {
-            // For rectangles and arrows, adjust start and/or end points based on handle
-            switch (resizeHandle) {
-              case 0: // Top-left
-                obj.points[0] = { x: newBounds.x, y: newBounds.y };
-                obj.points[1] = {
-                  x: newBounds.x + newBounds.width,
-                  y: newBounds.y + newBounds.height,
-                };
-                break;
-              case 1: // Top-middle
-                obj.points[0].y = newBounds.y;
-                obj.points[1].y = newBounds.y + newBounds.height;
-                break;
-              case 2: // Top-right
-                obj.points[0].y = newBounds.y;
-                obj.points[1] = {
-                  x: newBounds.x + newBounds.width,
-                  y: newBounds.y + newBounds.height,
-                };
-                break;
-              case 3: // Middle-left
-                obj.points[0].x = newBounds.x;
-                obj.points[1].x = newBounds.x + newBounds.width;
-                break;
-              case 4: // Middle-right
-                obj.points[1].x = newBounds.x + newBounds.width;
-                break;
-              case 5: // Bottom-left
-                obj.points[0].x = newBounds.x;
-                obj.points[1].y = newBounds.y + newBounds.height;
-                break;
-              case 6: // Bottom-middle
-                obj.points[1].y = newBounds.y + newBounds.height;
-                break;
-              case 7: // Bottom-right
-                obj.points[1] = {
-                  x: newBounds.x + newBounds.width,
-                  y: newBounds.y + newBounds.height,
-                };
-                break;
-              default:
-                break;
-            }
-          }
-
-          obj.bounds = newBounds;
-          setObjects(newObjects);
-          setStartPos(pos);
-          return;
-        } else {
-          // Handle moving
-          const dx = pos.x - startPos.x;
-          const dy = pos.y - startPos.y;
-          obj.bounds.x += dx;
-          obj.bounds.y += dy;
-          obj.points = obj.points.map((point) => ({
-            x: point.x + dx,
-            y: point.y + dy,
-          }));
-          setObjects(newObjects);
-          setStartPos(pos);
-          return;
-        }
-      }
-
-      if (tool !== "select") {
-        const newObjects = [...objects];
-        const currentObject = newObjects[newObjects.length - 1];
-
-        if (!currentObject) return;
-
-        if (tool === "brush") {
-          currentObject.points.push(pos);
-        } else if (startPos) {
-          currentObject.points = [startPos, pos];
-        }
-
-        currentObject.bounds = calculateBounds(
-          currentObject.points,
-          currentObject.strokeWidth
-        );
-        setObjects(newObjects);
-      }
-    };
-
-    // Handle mouse up event
-    const handleMouseUp = () => {
-      if (isDrawing) {
-        addToHistory([...objects]);
-      }
-      setIsDrawing(false);
-      setResizeHandle(null);
-
-      // Do not select the object immediately after drawing
-      if (tool !== "select") {
-        const newObjects = objects.map((obj) => ({ ...obj, selected: false }));
-        setObjects(newObjects);
-        setSelectedObject(null);
-      }
-    };
-
-    /**
-     * Draws all objects and the background image on the canvas.
-     */
-    const drawObjects = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      // Clear the canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Draw the background image if it exists
       if (backgroundImage) {
-        const canvasAspect = canvas.width / canvas.height;
-        const imageAspect = backgroundImage.width / backgroundImage.height;
-        let drawWidth = canvas.width;
-        let drawHeight = canvas.height;
-        let offsetX = 0;
-        let offsetY = 0;
-
-        if (imageAspect > canvasAspect) {
-          drawHeight = canvas.width / imageAspect;
-          offsetY = (canvas.height - drawHeight) / 2;
-        } else {
-          drawWidth = canvas.height * imageAspect;
-          offsetX = (canvas.width - drawWidth) / 2;
-        }
-
-        ctx.drawImage(backgroundImage, offsetX, offsetY, drawWidth, drawHeight);
+        ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
       }
 
-      // Draw all user-drawn objects
+      // Create temporary canvas for compositing
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext("2d");
+
+      if (!tempCtx) return;
+
       objects.forEach((obj) => {
-        ctx.beginPath();
+        tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+        if (obj.type === "eraser") {
+          ctx.save();
+          ctx.globalCompositeOperation = "destination-out";
+        } else {
+          ctx.globalCompositeOperation = "source-over";
+        }
         ctx.strokeStyle = obj.stroke;
         ctx.lineWidth = obj.strokeWidth;
+        ctx.lineCap = "round";
 
         switch (obj.type) {
-          case "line":
+          case "brush":
+          case "eraser":
             drawLine(ctx, obj);
             break;
           case "circle":
-            drawCircle(ctx, obj);
-            break;
-          case "arrow":
-            drawArrow(ctx, obj);
+            drawCircle(tempCtx, obj);
             break;
           case "rect":
-            drawRect(ctx, obj);
+            drawRect(tempCtx, obj);
+            break;
+          case "arrow":
+            drawArrow(tempCtx, obj);
             break;
         }
-
-        if (obj.selected) {
-          drawSelectionBox(ctx, obj);
+        if (obj.type === "eraser") {
+          ctx.restore();
         }
-      });
-    };
 
-    // Draw a line
+        // Draw the result to main canvas
+        ctx.drawImage(tempCanvas, 0, 0);
+      });
+
+      animationRef.current = requestAnimationFrame(drawObjects);
+    }, [objects, backgroundImage, tool, isDrawing, brushRadius]);
+
+    useEffect(() => {
+      animationRef.current = requestAnimationFrame(drawObjects);
+      return () => {
+        if (animationRef.current !== null) {
+          cancelAnimationFrame(animationRef.current);
+        }
+        animationRef.current = null; // Reset animationRef to ensure it's properly cleaned up
+      };
+    }, [drawObjects]);
+
+    // Canvas resizing on parent change
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      const parent = canvas?.parentElement;
+      if (canvas && parent) {
+        canvas.width = parent.offsetWidth;
+        canvas.height = 800; // Static height
+      }
+    }, [objects]);
+
+    // Canvas interaction handlers
     const drawLine = (ctx: CanvasRenderingContext2D, obj: DrawingObject) => {
       if (obj.points.length < 2) return;
       ctx.beginPath();
       ctx.moveTo(obj.points[0].x, obj.points[0].y);
-      obj.points.forEach((point) => {
-        ctx.lineTo(point.x, point.y);
-      });
+      obj.points.forEach((p) => ctx.lineTo(p.x, p.y));
       ctx.stroke();
     };
 
-    // Draw a circle
     const drawCircle = (ctx: CanvasRenderingContext2D, obj: DrawingObject) => {
-      if (obj.points.length < 2) return;
       const [center, circumference] = obj.points;
       if (!center || !circumference) return;
       const radius = Math.hypot(
-        circumference.x - center.x,
-        circumference.y - center.y
+        center.x - circumference.x,
+        center.y - circumference.y
       );
       ctx.beginPath();
-      ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+      ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI);
       ctx.stroke();
     };
 
-    // Draw a rectangle
     const drawRect = (ctx: CanvasRenderingContext2D, obj: DrawingObject) => {
-      if (obj.points.length < 2) return;
       const [start, end] = obj.points;
       if (!start || !end) return;
       ctx.strokeRect(start.x, start.y, end.x - start.x, end.y - start.y);
     };
 
-    // Draw an arrow
     const drawArrow = (ctx: CanvasRenderingContext2D, obj: DrawingObject) => {
-      if (obj.points.length < 2) return;
       const [start, end] = obj.points;
       if (!start || !end) return;
-
-      const headLen = 20;
       const angle = Math.atan2(end.y - start.y, end.x - start.x);
+      const headLen = 20;
 
       ctx.beginPath();
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
-      ctx.moveTo(
+      ctx.lineTo(
         end.x - headLen * Math.cos(angle - Math.PI / 6),
         end.y - headLen * Math.sin(angle - Math.PI / 6)
       );
-      ctx.lineTo(end.x, end.y);
+      ctx.moveTo(end.x, end.y);
       ctx.lineTo(
         end.x - headLen * Math.cos(angle + Math.PI / 6),
         end.y - headLen * Math.sin(angle + Math.PI / 6)
@@ -683,207 +362,19 @@ const ArtBoard = forwardRef<ArtBoardRef, ArtBoardProps>(
       ctx.stroke();
     };
 
-    // Draw the selection box with resize handles
-    const drawSelectionBox = (
-      ctx: CanvasRenderingContext2D,
-      obj: DrawingObject
-    ) => {
-      const { x, y, width, height } = obj.bounds;
-
-      // Draw the selection rectangle
-      ctx.save();
-      ctx.setLineDash([4, 2]);
-      ctx.strokeStyle = "#1E90FF"; // Dodger Blue color
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x, y, width, height);
-      ctx.restore();
-
-      // Draw the resize handles
-      const handleSize = 8;
-      const half = handleSize / 2;
-
-      const handles = [
-        { x: x, y: y }, // Top-left
-        { x: x + width / 2, y: y }, // Top-middle
-        { x: x + width, y: y }, // Top-right
-        { x: x, y: y + height / 2 }, // Middle-left
-        { x: x + width, y: y + height / 2 }, // Middle-right
-        { x: x, y: y + height }, // Bottom-left
-        { x: x + width / 2, y: y + height }, // Bottom-middle
-        { x: x + width, y: y + height }, // Bottom-right
-      ];
-
-      ctx.fillStyle = "#FFFFFF"; // White color for handles
-      ctx.strokeStyle = "#000000"; // Black border for handles
-      ctx.lineWidth = 1;
-
-      handles.forEach((handle) => {
-        ctx.fillRect(handle.x - half, handle.y - half, handleSize, handleSize);
-        ctx.strokeRect(
-          handle.x - half,
-          handle.y - half,
-          handleSize,
-          handleSize
-        );
-      });
-    };
-
-    // Get which handle is being interacted with
-    const getHandleAtPosition = (
-      pos: { x: number; y: number },
-      obj: DrawingObject
-    ): number | null => {
-      const { x, y, width, height } = obj.bounds;
-      const handleSize = 8;
-      const half = handleSize / 2;
-
-      const handles = [
-        { x: x, y: y }, // 0: Top-left
-        { x: x + width / 2, y: y }, // 1: Top-middle
-        { x: x + width, y: y }, // 2: Top-right
-        { x: x, y: y + height / 2 }, // 3: Middle-left
-        { x: x + width, y: y + height / 2 }, // 4: Middle-right
-        { x: x, y: y + height }, // 5: Bottom-left
-        { x: x + width / 2, y: y + height }, // 6: Bottom-middle
-        { x: x + width, y: y + height }, // 7: Bottom-right
-      ];
-
-      for (let i = 0; i < handles.length; i++) {
-        const handle = handles[i];
-        if (
-          pos.x >= handle.x - half &&
-          pos.x <= handle.x + half &&
-          pos.y >= handle.y - half &&
-          pos.y <= handle.y + half
-        ) {
-          return i;
-        }
-      }
-      return null;
-    };
-
-    // Get mouse position relative to the canvas
-    const getCanvasPos = (
-      event:
-        | React.MouseEvent<HTMLCanvasElement>
-        | React.TouchEvent<HTMLCanvasElement>
-    ): { x: number; y: number } => {
-      const canvas = canvasRef.current;
-      if (!canvas) return { x: 0, y: 0 };
-
-      const rect = canvas.getBoundingClientRect();
-      let clientX: number;
-      let clientY: number;
-
-      if ("touches" in event) {
-        clientX = event.touches[0].clientX;
-        clientY = event.touches[0].clientY;
-      } else {
-        clientX = event.clientX;
-        clientY = event.clientY;
-      }
-
-      return {
-        x: clientX - rect.left,
-        y: clientY - rect.top,
-      };
-    };
-
-    // Touch Handlers
-    const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
-      e.preventDefault();
-      const touch = e.touches[0];
-      if (!touch) return;
-
-      const simulatedEvent = {
-        clientX: touch.clientX,
-        clientY: touch.clientY,
-        altKey: e.altKey,
-        ctrlKey: e.ctrlKey,
-        metaKey: e.metaKey,
-        shiftKey: e.shiftKey,
-      } as unknown as React.MouseEvent<HTMLCanvasElement>;
-
-      handleMouseDown(simulatedEvent);
-    };
-
-    const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
-      e.preventDefault();
-      const touch = e.touches[0];
-      if (!touch) return;
-
-      const simulatedEvent = {
-        clientX: touch.clientX,
-        clientY: touch.clientY,
-        altKey: e.altKey,
-        ctrlKey: e.ctrlKey,
-        metaKey: e.metaKey,
-        shiftKey: e.shiftKey,
-      } as unknown as React.MouseEvent<HTMLCanvasElement>;
-
-      handleMouseMove(simulatedEvent);
-    };
-
-    const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
-      e.preventDefault();
-      handleMouseUp(); // Call without arguments
-    };
-    // Redraw objects whenever they change
-    useEffect(() => {
-      drawObjects();
-    }, [objects]);
-
-    // Expose exportDrawing method to parent components
+    // Export drawing to parent components
     useImperativeHandle(ref, () => ({
-      exportDrawing: async () => {
-        const canvas = canvasRef.current;
-        if (canvas) {
-          return canvas.toDataURL("image/png");
-        }
-        return "";
-      },
+      exportDrawing: async () =>
+        canvasRef.current?.toDataURL("image/png") || "",
     }));
-
-    // Handle Delete Button Click
-    const handleDelete = () => {
-      if (selectedObject !== null && selectedObject >= 0) {
-        const newObjects = objects.filter(
-          (_, index) => index !== selectedObject
-        );
-        setObjects(newObjects);
-        setSelectedObject(null);
-        addToHistory(newObjects);
-      }
-    };
-
-    // Handle Clear Canvas
-    const handleClearCanvas = () => {
-      if (objects.length > 0) {
-        setObjects([]);
-        setSelectedObject(null);
-        addToHistory([]);
-      }
-    };
-
-    // Handle Export Image
-    const handleExportImage = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const link = document.createElement("a");
-      link.download = "drawing.png";
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-    };
 
     return (
       <div className={styles.container}>
         <div className={styles.wrapper}>
-          {/* Canvas Section */}
+          {/* Canvas */}
           <div className={styles.canvasWrapper}>
             <canvas
               ref={canvasRef}
-              width={800}
-              height={600}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
@@ -902,140 +393,26 @@ const ArtBoard = forwardRef<ArtBoardRef, ArtBoardProps>(
             />
           </div>
 
-          {/* Controls Section */}
+          {/* Controls */}
           <div className={styles.controls}>
             <div className={styles.controlGroup}>
-              {/* Color Picker and Tool Selection */}
               <div className={styles.colorAndTools}>
-                <div className={styles.colorPicker}>
-                  <label className={styles.label}>Color:</label>
-                  <HexColorPicker color={brushColor} onChange={setBrushColor} />
-                </div>
-
-                <div className={styles.toolsGroup}>
-                  <div className={styles.tools}>
-                    <button
-                      className={`${styles.toolButton} ${
-                        tool === "brush" ? styles.active : ""
-                      }`}
-                      onClick={() => setTool("brush")}
-                      title="Brush Tool"
-                    >
-                      <Brush size={20} />
-                    </button>
-                    <button
-                      className={`${styles.toolButton} ${
-                        tool === "circle" ? styles.active : ""
-                      }`}
-                      onClick={() => setTool("circle")}
-                      title="Circle Tool"
-                    >
-                      <Circle size={20} />
-                    </button>
-                    <button
-                      className={`${styles.toolButton} ${
-                        tool === "rect" ? styles.active : ""
-                      }`}
-                      onClick={() => setTool("rect")}
-                      title="Rectangle Tool"
-                    >
-                      <Square size={20} />
-                    </button>
-                    <button
-                      className={`${styles.toolButton} ${
-                        tool === "select" ? styles.active : ""
-                      }`}
-                      onClick={() => setTool("select")}
-                      title="Select Tool"
-                    >
-                      <Move size={20} />
-                    </button>
-                    <button
-                      className={`${styles.toolButton} ${
-                        tool === "eraser" ? styles.active : ""
-                      }`}
-                      onClick={() => setTool("eraser")}
-                      title="Eraser Tool"
-                    >
-                      <Eraser size={20} />
-                    </button>
-                  </div>
-
-                  <button
-                    className={`${styles.deleteButton} ${
-                      selectedObject === null ? styles.disabled : ""
-                    }`}
-                    onClick={handleDelete}
-                    disabled={selectedObject === null}
-                    title="Delete Selected Shape"
-                  >
-                    <Trash2 size={20} />
-                    Delete
-                  </button>
-                </div>
+                <label className={styles.label}>Color:</label>
+                <HexColorPicker color={brushColor} onChange={setBrushColor} />
+                <Shapes shape={tool} setShape={setTool} />
               </div>
-
-              {/* Size Slider */}
-              <div className={styles.sliderGroup}>
-                <label className={styles.label}>Size:</label>
-                <input
-                  type="range"
-                  min="1"
-                  max="50"
-                  value={brushRadius}
-                  onChange={(e) => setBrushRadius(Number(e.target.value))}
-                  className={styles.slider}
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className={styles.actionButtons}>
-                <button
-                  className={`${styles.actionButton} ${styles.warning} ${
-                    objects.length === 0 ? styles.disabled : ""
-                  }`}
-                  onClick={handleClearCanvas}
-                  disabled={objects.length === 0}
-                  title="Clear Canvas"
-                >
-                  <Trash size={20} />
-                  Clear
-                </button>
-
-                <button
-                  className={`${styles.actionButton} ${
-                    historyIndex <= 0 ? styles.disabled : ""
-                  }`}
-                  onClick={undo}
-                  disabled={historyIndex <= 0}
-                  title="Undo"
-                >
-                  <ArrowLeft size={20} />
-                  Undo
-                </button>
-
-                <button
-                  className={`${styles.actionButton} ${
-                    historyIndex >= history.length - 1 ? styles.disabled : ""
-                  }`}
-                  onClick={redo}
-                  disabled={historyIndex >= history.length - 1}
-                  title="Redo"
-                >
-                  <ArrowRight size={20} />
-                  Redo
-                </button>
-              </div>
-
-              {/* Export Button */}
-              <button
-                className={styles.exportButton}
-                onClick={handleExportImage}
-                title="Export Image"
-              >
-                <Download size={20} />
-                Export
-              </button>
+              <Slider value={brushRadius} onChange={setBrushRadius} />
+              <ActionButtons
+                objectsLength={objects.length}
+                selectedObject={selectedObject}
+                historyIndex={historyIndex}
+                historyLength={history.length}
+                onClearCanvas={handleClearCanvas}
+                onDelete={handleDelete}
+                onUndo={undo}
+                onRedo={redo}
+                onExport={handleExportImage}
+              />
             </div>
           </div>
         </div>
@@ -1043,4 +420,5 @@ const ArtBoard = forwardRef<ArtBoardRef, ArtBoardProps>(
     );
   }
 );
+
 export default ArtBoard;
