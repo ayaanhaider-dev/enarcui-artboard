@@ -310,7 +310,12 @@ const ArtBoard = forwardRef<ArtBoardRef, ArtBoardProps>(
       const parent = canvas?.parentElement;
       if (canvas && parent) {
         canvas.width = parent.offsetWidth;
-        canvas.height = 800; // Static height
+
+        if (window.innerWidth <= 768) {
+          canvas.height = 400; // Adjust height for mobile devices
+        } else {
+          canvas.height = 800; // Height for larger screens
+        }
       }
     }, [objects]);
 
