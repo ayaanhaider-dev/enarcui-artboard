@@ -1,9 +1,3 @@
-.container {
-  padding: 1rem;
-  background-color: #f8f9fa;
-  min-height: 100vh;
-}
-
 .wrapper {
   max-width: 1400px;
   margin: 0 auto;
@@ -55,7 +49,6 @@
   width: 100%;
 }
 
-
 .deleteButton {
   display: flex;
   align-items: center;
@@ -79,4 +72,3 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
-
