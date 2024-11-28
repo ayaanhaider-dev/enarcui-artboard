@@ -41,7 +41,7 @@ export const Shapes = ({ shape, setShape }: ShapesProps) => {
         </button>
         <button
           className={`${styles.shapeButton} ${
-            shape === "rect" ? styles.active : ""
+            shape === "arrow" ? styles.active : ""
           }`}
           onClick={() => setShape("arrow")}
           title="Arrow Tool: Draw Arrow with adjustable dimensions."
