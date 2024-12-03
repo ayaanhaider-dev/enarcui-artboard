@@ -13,6 +13,7 @@ export const Shapes = ({ shape, setShape }: ShapesProps) => {
     <div className={styles.shapesGroup}>
       <div className={styles.shapes}>
         <button
+          type="button"
           className={`${styles.shapeButton} ${
             shape === "brush" ? styles.active : ""
           }`}
@@ -22,6 +23,7 @@ export const Shapes = ({ shape, setShape }: ShapesProps) => {
           <Brush size={20} />
         </button>
         <button
+          type="button"
           className={`${styles.shapeButton} ${
             shape === "circle" ? styles.active : ""
           }`}
@@ -31,6 +33,7 @@ export const Shapes = ({ shape, setShape }: ShapesProps) => {
           <Circle size={20} />
         </button>
         <button
+          type="button"
           className={`${styles.shapeButton} ${
             shape === "rect" ? styles.active : ""
           }`}
@@ -40,6 +43,7 @@ export const Shapes = ({ shape, setShape }: ShapesProps) => {
           <Square size={20} />
         </button>
         <button
+          type="button"
           className={`${styles.shapeButton} ${
             shape === "arrow" ? styles.active : ""
           }`}
@@ -49,6 +53,7 @@ export const Shapes = ({ shape, setShape }: ShapesProps) => {
           <ArrowRight size={20} />
         </button>
         <button
+          type="button"
           className={`${styles.shapeButton} ${
             shape === "select" ? styles.active : ""
           }`}
@@ -58,6 +63,7 @@ export const Shapes = ({ shape, setShape }: ShapesProps) => {
           <Move size={20} />
         </button>
         <button
+          type="button"
           className={`${styles.shapeButton} ${
             shape === "eraser" ? styles.active : ""
           }`}

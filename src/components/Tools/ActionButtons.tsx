@@ -29,6 +29,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     <>
       <div className={styles.actionButtons}>
         <button
+          type="button"
           className={`${styles.actionButton} ${styles.warning} ${
             objectsLength === 0 ? styles.disabled : ""
           }`}
@@ -40,6 +41,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           Clear
         </button>
         <button
+          type="button"
           className={`${styles.actionButton} ${styles.warning} ${
             selectedObject === null ? styles.disabled : ""
           }`}
@@ -51,6 +53,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           Delete
         </button>
         <button
+          type="button"
           className={`${styles.actionButton} ${
             historyIndex <= 0 ? styles.disabled : ""
           }`}
@@ -62,6 +65,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           Undo
         </button>
         <button
+          type="button"
           className={`${styles.actionButton} ${
             historyIndex >= historyLength - 1 ? styles.disabled : ""
           }`}
@@ -74,6 +78,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         </button>
       </div>
       <button
+        type="button"
         className={styles.exportButton}
         onClick={onExport}
         title="Export Image"
