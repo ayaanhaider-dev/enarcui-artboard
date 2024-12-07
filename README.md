@@ -76,6 +76,9 @@ const App = () => {
         ref={artBoardRef}
         saveData="existing-drawing-data" // Optional
         imageSrc="background.jpg" // Optional
+        width={400} //Optional
+        height={600} //Optional
+        controlsHeight={300} //Optional
       />
       <button onClick={handleExport}>Export Drawing</button>
     </div>
@@ -85,12 +88,13 @@ const App = () => {
 
 ## 🔧 Props
 
-| Prop     | Type   | Required | Default   | Description                                      |
-| -------- | ------ | -------- | --------- | ------------------------------------------------ |
-| saveData | string | No       | undefined | Serialized drawing data to initialize the canvas |
-| imageSrc | string | No       | undefined | Background image URL                             |
-| width    | number | No       | 800       | Canvas width in pixels                           |
-| height   | number | No       | 600       | Canvas height in pixels                          |
+| Prop           | Type   | Required | Default   | Description                                      |
+| -------------- | ------ | -------- | --------- | ------------------------------------------------ |
+| saveData       | string | No       | undefined | Serialized drawing data to initialize the canvas |
+| imageSrc       | string | No       | undefined | Background image URL                             |
+| width          | number | No       | 800       | Canvas width in pixels                           |
+| height         | number | No       | 600       | Canvas height in pixels                          |
+| controlsHeight | number | No       | 600       | Controls height in pixels                        |
 
 ## 📚 API Reference
 
@@ -99,9 +103,6 @@ const App = () => {
 | Method          | Returns         | Description                           |
 | --------------- | --------------- | ------------------------------------- |
 | exportDrawing() | Promise<string> | Returns drawing as base64 encoded PNG |
-| clear()         | void            | Clears the entire canvas              |
-| undo()          | void            | Reverts last action                   |
-| redo()          | void            | Reapplies last undone action          |
 
 ## 🛠️ Development
 

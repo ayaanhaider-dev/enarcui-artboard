@@ -94,6 +94,25 @@ interface ArtBoardProps {
    * <ArtBoard imageSrc="https://example.com/background.jpg" />;
    */
   imageSrc?: string;
+  /**
+   * Width of the drawing canvas in pixels.
+   * Default: 800
+   */
+  width?: number;
+
+  /**
+   * Height of the drawing canvas in pixels.
+   * Default: 600
+   */
+  height?: number;
+
+  /**
+   * Height of the controls area in pixels.
+   * Allows you to control the vertical space allocated to tools and action buttons.
+   * If contents exceed this height, it will become scrollable.
+   * Default: 'auto' (no fixed height).
+   */
+  controlsHeight?: number | string;
 }
 
 /**
@@ -142,6 +161,9 @@ export interface ArtBoardRef {
  *         ref={artBoardRef}
  *         saveData="existing-drawing-data"
  *         imageSrc="https://example.com/background.jpg"
+ *         width={800}
+ *         height={600}
+ *         controlsHeight={600}
  *       />
  *       <button onClick={handleExport}>Export Drawing</button>
  *     </div>
@@ -151,7 +173,10 @@ export interface ArtBoardRef {
  * export default App;
  */
 const ArtBoard = forwardRef<ArtBoardRef, ArtBoardProps>(
-  ({ saveData, imageSrc }, ref) => {
+  (
+    { saveData, imageSrc, width = 800, height = 600, controlsHeight = "auto" },
+    ref
+  ) => {
     // Canvas reference
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const animationRef = useRef<number | null>(null);
@@ -307,17 +332,15 @@ const ArtBoard = forwardRef<ArtBoardRef, ArtBoardProps>(
     // Canvas resizing on parent change
     useEffect(() => {
       const canvas = canvasRef.current;
-      const parent = canvas?.parentElement;
-      if (canvas && parent) {
-        canvas.width = parent.offsetWidth;
-
-        if (window.innerWidth <= 768) {
-          canvas.height = 400; // Adjust height for mobile devices
-        } else {
-          canvas.height = 800; // Height for larger screens
-        }
+      if (canvas) {
+        canvas.width = width;
+        canvas.height = height;
       }
-    }, [objects]);
+    }, [width, height]);
+    // Base controls height for 100% scale
+    const baseControlsHeight = 600;
+    // Compute scale factor
+    const scaleFactor = Number(controlsHeight) / baseControlsHeight;
 
     // Canvas interaction handlers
     const drawLine = (ctx: CanvasRenderingContext2D, obj: DrawingObject) => {
@@ -392,14 +415,23 @@ const ArtBoard = forwardRef<ArtBoardRef, ArtBoardProps>(
                 borderRadius: "4px",
                 backgroundColor: "#ffffff",
                 cursor: tool === "select" ? "default" : "crosshair",
-                width: "100%",
-                height: "auto",
+                width: width,
+                height: height,
               }}
             />
           </div>
 
           {/* Controls */}
-          <div className={styles.controls}>
+          <div
+            className={styles.controls}
+            style={{
+              width: 300, // fixed width for the panel, adjust as needed
+              height: controlsHeight,
+              transform: `scale(${scaleFactor})`,
+              transformOrigin: "top left",
+              overflow: "hidden", // hides overflow since we're scaling the contents
+            }}
+          >
             <div className={styles.controlGroup}>
               <div className={styles.colorAndTools}>
                 <label className={styles.label}>Color:</label>
