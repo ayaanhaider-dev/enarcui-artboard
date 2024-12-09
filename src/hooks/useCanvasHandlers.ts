@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { DrawingObject } from "../components/ArtBoard";
 
-
 export interface CanvasHandlersProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
   objects: DrawingObject[];
@@ -50,7 +49,7 @@ export const useCanvasHandlers = ({
       setHistory([...history.slice(0, historyIndex + 1), newObjects]);
       setHistoryIndex((prev) => prev + 1);
     }
-}, [
+  }, [
     selectedObject,
     objects,
     setObjects,
@@ -60,13 +59,21 @@ export const useCanvasHandlers = ({
     historyIndex,
     setHistoryIndex,
   ]);
+
   // Clear all objects
   const handleClearCanvas = useCallback(() => {
     setObjects([]);
     setSelectedObject(null);
     setHistory([...history.slice(0, historyIndex + 1), []]);
     setHistoryIndex((prev) => prev + 1);
-  }, [setObjects, setSelectedObject, setHistory, history, historyIndex, setHistoryIndex]);
+  }, [
+    setObjects,
+    setSelectedObject,
+    setHistory,
+    history,
+    historyIndex,
+    setHistoryIndex,
+  ]);
 
   // Export canvas as image
   const handleExportImage = useCallback(() => {

@@ -199,8 +199,8 @@ const ArtBoard = forwardRef<ArtBoardRef, ArtBoardProps>(
     );
     const [resizeHandle, setResizeHandle] = useState<number | null>(null);
 
-    const [history, setHistory] = useState<DrawingObject[][]>([]);
-    const [historyIndex, setHistoryIndex] = useState(-1);
+    const [history, setHistory] = useState<DrawingObject[][]>([[]]);
+    const [historyIndex, setHistoryIndex] = useState(0);
 
     // State for the background image
     const [backgroundImage, setBackgroundImage] =
