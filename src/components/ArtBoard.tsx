@@ -113,6 +113,14 @@ interface ArtBoardProps {
    * Default: 'auto' (no fixed height).
    */
   controlsHeight?: number | string;
+  /**
+   * An optional array of default colors for the color picker.
+   * If specified, the ArtBoard will render a palette of these colors instead of the full spectrum.
+   *
+   * @example
+   * <ArtBoard defaultColors={['#000000', '#FF0000', '#00FF00', '#0000FF']} />
+   */
+  defaultColors?: string[];
 }
 
 /**
@@ -174,7 +182,14 @@ export interface ArtBoardRef {
  */
 const ArtBoard = forwardRef<ArtBoardRef, ArtBoardProps>(
   (
-    { saveData, imageSrc, width = 800, height = 600, controlsHeight = "auto" },
+    {
+      saveData,
+      imageSrc,
+      width = 800,
+      height = 600,
+      controlsHeight = "auto",
+      defaultColors,
+    },
     ref
   ) => {
     // Canvas reference
@@ -396,6 +411,11 @@ const ArtBoard = forwardRef<ArtBoardRef, ArtBoardProps>(
         canvasRef.current?.toDataURL("image/png") || "",
     }));
 
+    // Handle color selection from default palette
+    const handleColorSelect = (color: string) => {
+      setBrushColor(color);
+    };
+
     return (
       <div className={styles.container}>
         <div className={styles.wrapper}>
@@ -435,7 +455,25 @@ const ArtBoard = forwardRef<ArtBoardRef, ArtBoardProps>(
             <div className={styles.controlGroup}>
               <div className={styles.colorAndTools}>
                 <label className={styles.label}>Color:</label>
-                <HexColorPicker color={brushColor} onChange={setBrushColor} />
+                {defaultColors && defaultColors.length > 0 ? (
+                  <div className={styles.colorPalette}>
+                    {defaultColors.map((color) => (
+                      <button
+                        key={color}
+                        className={`${styles.colorButton} ${
+                          brushColor === color ? styles.selected : ""
+                        }`}
+                        style={{ backgroundColor: color }}
+                        onClick={() => handleColorSelect(color)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <HexColorPicker
+                    color={brushColor}
+                    onChange={(color) => setBrushColor(color)}
+                  />
+                )}
                 <Shapes shape={tool} setShape={setTool} />
               </div>
               <Slider value={brushRadius} onChange={setBrushRadius} />

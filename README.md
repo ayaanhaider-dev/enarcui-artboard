@@ -1,10 +1,12 @@
 # EnarcUI ArtBoard 🎨
 
-[![npm version](https://badge.fury.io/js/%40enarcui%2Fartboard.svg)](https://badge.fury.io/js/%40enarcui%2Fartboard)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![npm version](https://badge.fury.io/js/%40enarcui%2Fartboard.svg)](https://badge.fury.io/js/%40enarcui%2Fartboard)  
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
 
-A powerful and versatile React drawing component with advanced shape manipulation capabilities
+A powerful and versatile React drawing component with advanced shape manipulation capabilities.
+
+---
 
 ## ✨ Features
 
@@ -14,7 +16,7 @@ A powerful and versatile React drawing component with advanced shape manipulatio
   - Shape tools: Circle, Rectangle, Arrow
   - Selection tool for object manipulation
   - Eraser tool
-  - Color picker with hex color support
+  - Color picker with **default color palette support**
 
 - 🔄 **Advanced Object Manipulation**
 
@@ -27,7 +29,7 @@ A powerful and versatile React drawing component with advanced shape manipulatio
 - 📐 **Precise Controls**
 
   - Adjustable brush size (1-50px)
-  - Custom color selection
+  - Custom color selection or default color palette
   - Stroke width control
   - Snap to grid (coming soon)
 
@@ -44,9 +46,12 @@ A powerful and versatile React drawing component with advanced shape manipulatio
   - Save/load drawing state
 
 - 🖼️ **Background Support**
+
   - Load custom background images
   - Auto-scaling and centering
   - Maintain aspect ratio
+
+---
 
 ## 🚀 Installation
 
@@ -55,6 +60,8 @@ npm install enarc-artboard
 # or
 yarn add enarc-artboard
 ```
+
+---
 
 ## 📖 Basic Usage
 
@@ -76,9 +83,10 @@ const App = () => {
         ref={artBoardRef}
         saveData="existing-drawing-data" // Optional
         imageSrc="background.jpg" // Optional
-        width={400} //Optional
-        height={600} //Optional
-        controlsHeight={300} //Optional
+        width={400} // Optional
+        height={600} // Optional
+        controlsHeight={300} // Optional
+        defaultColors={["#000000", "#FF0000", "#00FF00", "#0000FF"]} // Optional
       />
       <button onClick={handleExport}>Export Drawing</button>
     </div>
@@ -86,15 +94,20 @@ const App = () => {
 };
 ```
 
+---
+
 ## 🔧 Props
 
-| Prop           | Type   | Required | Default   | Description                                      |
-| -------------- | ------ | -------- | --------- | ------------------------------------------------ |
-| saveData       | string | No       | undefined | Serialized drawing data to initialize the canvas |
-| imageSrc       | string | No       | undefined | Background image URL                             |
-| width          | number | No       | 800       | Canvas width in pixels                           |
-| height         | number | No       | 600       | Canvas height in pixels                          |
-| controlsHeight | number | No       | 600       | Controls height in pixels                        |
+| Prop           | Type            | Required | Default   | Description                                        |
+| -------------- | --------------- | -------- | --------- | -------------------------------------------------- |
+| saveData       | string          | No       | undefined | Serialized drawing data to initialize the canvas   |
+| imageSrc       | string          | No       | undefined | Background image URL                               |
+| width          | number          | No       | 800       | Canvas width in pixels                             |
+| height         | number          | No       | 600       | Canvas height in pixels                            |
+| controlsHeight | number          | No       | 600       | Controls height in pixels                          |
+| defaultColors  | Array\<string\> | No       | undefined | An array of hex colors for a default color palette |
+
+---
 
 ## 📚 API Reference
 
@@ -103,6 +116,8 @@ const App = () => {
 | Method          | Returns         | Description                           |
 | --------------- | --------------- | ------------------------------------- |
 | exportDrawing() | Promise<string> | Returns drawing as base64 encoded PNG |
+
+---
 
 ## 🛠️ Development
 
@@ -117,6 +132,8 @@ cd enarc-artboard
 npm install
 npm run dev
 ```
+
+---
 
 ## 🤝 Contributing
 
@@ -165,6 +182,8 @@ npm run dev
 npm test
 ```
 
+---
+
 ## License
 
 Copyright (c) 2024 Enarc ArtBoard
@@ -174,6 +193,8 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
 
 ## 🙏 Acknowledgments
 
